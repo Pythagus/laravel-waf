@@ -1,0 +1,32 @@
+{
+	"name": "pythagus/laravel-waf",
+    "description": "Web Application Firewall for Laravel",
+	"license": "MIT",
+	"type": "package",
+	"authors": [{
+        "name": "Damien Molina",
+		"homepage": "https://github.com/Pythagus",
+        "role": "Developer"
+    }],
+	"require": {
+		"php": "^7.3|^8.1",
+		"laravel/framework": "^9.0|^10.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"Pythagus\\LaravelWaf\\": "src/"
+		}
+	},
+	"config": {
+		"sort-packages": true
+	},
+	"minimum-stability": "dev",
+	"prefer-stable": true,
+	"extra": {
+        "laravel": {
+            "providers": [
+                "Pythagus\\LaravelWaf\\WafServiceProvider"
+            ]
+        }
+    }
+}
