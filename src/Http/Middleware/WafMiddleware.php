@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Pythagus\LaravelWaf\Exceptions\BaseWafProtectionException;
 use Pythagus\LaravelWaf\Exceptions\BlacklistedBehaviorException;
+use Pythagus\LaravelWaf\Support\IpReputation;
 use Pythagus\LaravelWaf\Support\RegexMatcher;
 use Pythagus\LaravelWaf\Support\Rules;
 
@@ -33,15 +34,25 @@ class WafMiddleware {
     protected RegexMatcher $matcher ;
 
     /**
+     * Helper managing the reputation cache and interactions
+     * with it.
+     *
+     * @var IpReputation
+     */
+    protected IpReputation $reputation ;
+
+    /**
      * Build a new middleware instance, and create the
      * helpers instances.
      * 
      * @param Rules $rules
      * @param RegexMatcher $matcher
+     * @param IpReputation $reputation
      */
-    public function __construct(Rules $rules, RegexMatcher $matcher) {
+    public function __construct(Rules $rules, RegexMatcher $matcher, IpReputation $reputation) {
         $this->rules = $rules ;
         $this->matcher = $matcher ;
+        $this->reputation = $reputation ;
     }
 
     /**
@@ -57,12 +68,10 @@ class WafMiddleware {
 
             return $next($request) ;
         } catch(BaseWafProtectionException $e) {
-            #return response(status: 418) ;
-            return response()->json([
-                "Pas gentil",
-                $e->getMessage(),
-                $e::class,
-            ], status: 418) ;
+            # Officially, the HTTP code 400 is meant for requests
+            # that don't respect what the server was expecting, or
+            # that it was considerd unsafe. So, that's perfect!
+            abort(400) ;
         }
     }
 
@@ -78,6 +87,13 @@ class WafMiddleware {
         if(str_contains($language, "frs")) {
             throw new BlacklistedBehaviorException("Accept-language: " . $language) ;
         }
+
+        # Apply reputation blacklist.
+        if($this->reputation->isSuspicious($request->getClientIp())) {
+            throw new BlacklistedBehaviorException("Reputation") ;
+        }
+
+        # TODO geofencing with MaxMind : https://github.com/stevebauman/location
     }
 
     /**
@@ -115,7 +131,7 @@ class WafMiddleware {
      */
     protected function protectAccessedUri(string $uri) {
         // Clean the URL.
-        $cleaned = urldecode(strtolower($uri)) ;
+        $cleaned = strtolower(urldecode($uri)) ;
 
         // If the URL is worthless matching the regexees, then do nothing.
         if($this->rules->isWorthlessUrl($cleaned)) {
@@ -126,7 +142,7 @@ class WafMiddleware {
         // the limitation of the HTTP server handling huge requests.
         $this->rules->checkLongUrl($cleaned) ;
 
-        // XSS, LFI, RCE, etc.
+        // Test well-known malicious epxloits like XSS, LFI, RCE, etc.
         $this->matcher->shouldntMatch(
             value: $cleaned, 
             regex: $this->rules->getUrlRules(),

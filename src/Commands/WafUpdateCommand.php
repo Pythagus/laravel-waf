@@ -3,8 +3,8 @@
 namespace Pythagus\LaravelWaf\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Pythagus\LaravelWaf\Support\IpReputation;
 
 /**
  * This command updates all the WAF dependencies at once.
@@ -36,31 +36,65 @@ class WafUpdateCommand extends Command {
 	protected $description = 'Updates the WAF dependencies: AbuseIPDB, Geolocation, WAF rules, etc.' ;
 
 	/**
+	 * Build the command instance and inject dependencies.
+	 *
+	 * @param IpReputation $reputation
+	 */
+	public function __construct(protected IpReputation $reputation) {
+		parent::__construct() ;
+	}
+
+	/**
+	 * Report the exception, but continue the execution.
+	 *
+	 * @param \Throwable $t
+	 * @return void
+	 */
+	protected function reportError(\Throwable $t) {
+		report($t) ;
+		$this->components->error("An error occured: " . $t->getMessage()) ;
+	}
+
+	/**
 	 * Execute the console command.
 	 *
 	 * @return int
 	 */
 	public function handle() {
-		// We update AbuseIPDB every time this command is called.
-		if($this->moduleUpdateAllowed('abuseipdb')) {
-			$this->updateAbuseIPDB() ;
-		} else {
-			$this->components->warn("AbuseIPDB : reputation database NOT updated (disabled by config)") ;
-		}
+		$status = Command::SUCCESS ;
 
-		// For the geolocation, we don't need to update the database
-		// that frequently. So, just update it once a day.
-		if($this->moduleUpdateAllowed('geolocation')) {
-			if($this->shouldUpdateGeolocation()) {
-				$this->updateGeolocationDatabase() ;
+		try {
+			// We update AbuseIPDB every time this command is called.
+			if($this->moduleUpdateAllowed('abuseipdb') && config('waf.abuseipdb.reputation.enabled', default: false)) {
+				$this->updateAbuseIPDB() ;
+				$this->components->info("AbuseIPDB : reputation database updated") ;
 			} else {
-				$this->components->warn("Geolocation : database not updated (didn't need an update)") ;
+				$this->components->warn("AbuseIPDB : reputation database NOT updated (disabled by config)") ;
 			}
-		} else {
-			$this->components->warn("Geolocation : database NOT updated (disabled by config)") ;
+		} catch(\Throwable $t) {
+			$this->reportError($t) ;
+			$status = Command::FAILURE ;
 		}
 
-		return Command::SUCCESS ;
+		try {
+			// For the geolocation, we don't need to update the database
+			// that frequently. So, just update it once a day.
+			if($this->moduleUpdateAllowed('geolocation')) {
+				if($this->shouldUpdateGeolocation()) {
+					$this->updateGeolocationDatabase() ;
+					$this->components->info("Geolocation : database updated") ;
+				} else {
+					$this->components->warn("Geolocation : database not updated (didn't need an update)") ;
+				}
+			} else {
+				$this->components->warn("Geolocation : database NOT updated (disabled by config)") ;
+			}
+		} catch(\Throwable $t) {
+			$this->reportError($t) ;
+			$status = Command::FAILURE ;
+		}
+		
+		return $status ;
 	}
 
 	/**
@@ -81,10 +115,7 @@ class WafUpdateCommand extends Command {
 	 * @return void
 	 */
 	protected function updateAbuseIPDB() {
-		// TODO
-
-		// Finally, display a success message.
-		$this->components->info("AbuseIPDB : reputation database updated") ;
+		$this->reputation->updateFromApi() ;
 	}
 
 	/**
@@ -107,11 +138,6 @@ class WafUpdateCommand extends Command {
 			return true ;
 		}
 
-		// Calculate the number of seconds between the last update and
-		// now. The method diffInSeconds(), without parameter, compares
-		// the given date with now.
-		$diffWithNow = Carbon::createFromTimestamp($date)->diffInSeconds() ;
-
 		// 86100 = 86400 - 300
 		// 86400 is the number of seconds in 24 hours
 		// 300 : regarding the number of tasks launched at the same
@@ -119,7 +145,7 @@ class WafUpdateCommand extends Command {
 		//       minutes from its original schedule date. That's why
 		//       there is a small "overlapping" possible period.
 		//       300 = 5 * 60, the number of seconds in 5 minutes.
-		return $diffWithNow >= 86100 ;
+		return (time() - $date) >= 86100 ;
 	}
 
 	/**
@@ -133,8 +159,5 @@ class WafUpdateCommand extends Command {
 		// Set the new update date in the cache.
 		Cache::forget(static::CACHE_GEOLOCATION_LAST_UPDATE_KEY) ;
 		Cache::forever(static::CACHE_GEOLOCATION_LAST_UPDATE_KEY, time()) ;
-
-		// Finally, display a success message.
-		$this->components->info("Geolocation : database updated") ;
 	}
 }

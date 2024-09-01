@@ -2,6 +2,13 @@
 
 return [
 
+    // Determine whether IPv6 are likely to access your application. In some
+    // architectures, IPv6 are not allowed and you'll only receive IPv4 connections.
+    // In that case, it reduces the overload of the WAF by only focussing on IPv4.
+    //
+    // Disclaimer: this parameter won't block IPv6 traffic!
+    'ipv6' => env('WAF_IPV6', default: false),
+
     /*
     |--------------------------------------------------------------------------
     | WAF updates
@@ -51,6 +58,21 @@ return [
             // This will activate the automatic blacklist if the IP
             // is known by AbuseIPDB with a score of 100% of confidence.
             'enabled' => env('WAF_ABUSEIPDB_REPUTATION', default: true),
+
+            // Path to the backup file. 
+            // Set this value to null to disable the backup feature.
+            //
+            // First column: IP addresses
+            // Second column: Insertion date
+            'backup_file' => storage_path('app/waf_ip_reputation.csv'),
+
+            // Time To Live.
+            // Number of seconds an entry in the reputation database is valid.
+            // 259200 = 3 * 86400 = number of seconds in 3 days
+            //
+            // If set to 0, the entries will never be removed. You will have to clear the
+            // file by yourself.
+            'ttl' => 259200,
         ],
 
         'report' => [
