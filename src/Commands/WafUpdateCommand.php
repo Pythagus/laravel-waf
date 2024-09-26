@@ -4,7 +4,7 @@ namespace Pythagus\LaravelWaf\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Pythagus\LaravelWaf\Support\IpReputation;
+use Pythagus\LaravelWaf\Security\IpReputation;
 
 /**
  * This command updates all the WAF dependencies at once.
@@ -64,12 +64,12 @@ class WafUpdateCommand extends Command {
 		$status = Command::SUCCESS ;
 
 		try {
-			// We update AbuseIPDB every time this command is called.
-			if($this->moduleUpdateAllowed('abuseipdb') && config('waf.abuseipdb.reputation.enabled', default: false)) {
-				$this->updateAbuseIPDB() ;
-				$this->components->info("AbuseIPDB : reputation database updated") ;
+			// We update the IP reputation every time this command is called.
+			if($this->shouldUpdateIpReputation()) {
+				$this->updateIpReputation() ;
+				$this->components->info("IP reputation database updated") ;
 			} else {
-				$this->components->warn("AbuseIPDB : reputation database NOT updated (disabled by config)") ;
+				$this->components->warn("IP reputation database NOT updated (disabled by config)") ;
 			}
 		} catch(\Throwable $t) {
 			$this->reportError($t) ;
@@ -109,13 +109,22 @@ class WafUpdateCommand extends Command {
 	}
 
 	/**
-	 * This method update the AbuseIPDb reputation cache
-	 * we kept.
+	 * Determine whether the IP reputation database
+	 * should be updated.
+	 * 
+	 * @return bool
+	 */
+	protected function shouldUpdateIpReputation() {
+		return $this->moduleUpdateAllowed('ip-reputation') && config('waf.reputation.enabled', default: false) ;
+	}
+
+	/**
+	 * This method update the IP reputation cache.
 	 * 
 	 * @return void
 	 */
-	protected function updateAbuseIPDB() {
-		$this->reputation->updateFromApi() ;
+	protected function updateIpReputation() {
+		$this->reputation->update() ;
 	}
 
 	/**

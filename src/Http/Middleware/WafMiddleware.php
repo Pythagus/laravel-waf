@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Pythagus\LaravelWaf\Exceptions\BaseWafProtectionException;
 use Pythagus\LaravelWaf\Exceptions\BlacklistedBehaviorException;
-use Pythagus\LaravelWaf\Support\IpReputation;
+use Pythagus\LaravelWaf\Security\IpReputation;
 use Pythagus\LaravelWaf\Support\RegexMatcher;
 use Pythagus\LaravelWaf\Support\Rules;
 
