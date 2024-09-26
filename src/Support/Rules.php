@@ -2,7 +2,7 @@
 
 namespace Pythagus\LaravelWaf\Support;
 
-use Pythagus\LaravelWaf\Exceptions\SuspiciousUrlException;
+use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
 
 /**
  * Rules helper.
@@ -24,7 +24,6 @@ class Rules {
     public const LFI = "LFI" ;
     public const RCE = "RCE" ;
     public const SQLI = "SQLI" ;
-    public const LONG_URL = "long_url" ;
 
     /**
      * Rules list.
@@ -127,7 +126,7 @@ class Rules {
             // url (more than 256 times the same one), then it's probably
             // an attack for server vulnerabilities.
             if(count($chars) > 0) {
-                throw new SuspiciousUrlException(static::LONG_URL) ;
+                throw WafProtectionException::long_url() ;
             }
         }
     }

@@ -4,8 +4,7 @@ namespace Pythagus\LaravelWaf\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Pythagus\LaravelWaf\Exceptions\BaseWafProtectionException;
-use Pythagus\LaravelWaf\Exceptions\BlacklistedBehaviorException;
+use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
 use Pythagus\LaravelWaf\Security\IpReputation;
 use Pythagus\LaravelWaf\Support\RegexMatcher;
 use Pythagus\LaravelWaf\Support\Rules;
@@ -67,10 +66,11 @@ class WafMiddleware {
             $this->protectAccessedUri($request->getRequestUri()) ;
 
             return $next($request) ;
-        } catch(BaseWafProtectionException $e) {
+        } catch(WafProtectionException $e) {
             # Officially, the HTTP code 400 is meant for requests
             # that don't respect what the server was expecting, or
             # that it was considerd unsafe. So, that's perfect!
+            // TODO: add metrics for the admin
             abort(400) ;
         }
     }
@@ -85,12 +85,12 @@ class WafMiddleware {
         // Apply Accept-Language blacklist.
         $language = $request->server->get('HTTP_ACCEPT_LANGUAGE') ;
         if(str_contains($language, "frs")) {
-            throw new BlacklistedBehaviorException("Accept-language: " . $language) ;
+            throw WafProtectionException::http("Accept-language", $language) ;
         }
 
         # Apply reputation blacklist.
-        if($this->reputation->isSuspicious($request->getClientIp())) {
-            throw new BlacklistedBehaviorException("Reputation") ;
+        if($this->reputation->isKnown($ip = $request->getClientIp())) {
+            throw WafProtectionException::blacklisted($ip) ;
         }
 
         # TODO geofencing with MaxMind : https://github.com/stevebauman/location

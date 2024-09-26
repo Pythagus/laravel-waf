@@ -2,7 +2,7 @@
 
 namespace Pythagus\LaravelWaf\Support;
 
-use Pythagus\LaravelWaf\Exceptions\InvalidHttpValueException;
+use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
 
 /**
  * This class helps managing regex and test
@@ -30,7 +30,7 @@ class RegexMatcher {
 
         foreach($regex as $key => $r) {
             if(preg_match($r, $value) == $expected_value) {
-                throw new InvalidHttpValueException($key . ": " . $value) ;
+                throw WafProtectionException::http($key, $value) ;
             }
         }
     }
