@@ -4,6 +4,7 @@ namespace Pythagus\LaravelWaf\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
 use Pythagus\LaravelWaf\Security\IpReputation;
 use Pythagus\LaravelWaf\Support\RegexMatcher;
@@ -72,6 +73,13 @@ class WafMiddleware {
             # that it was considerd unsafe. So, that's perfect!
             // TODO: add metrics for the admin
             abort(400) ;
+        } catch(WafConfigurationException $e) {
+            // Report the exception, so that the admin can manage the issues.
+            report($e) ;
+
+            // But keep serving the request, because a configuration issue in
+            // the WAF shouldn't impact the traffic, legitimate or not.
+            return $next($request) ;
         }
     }
 
