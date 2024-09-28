@@ -104,8 +104,8 @@ class WafUpdateCommand extends Command {
 	 * @param string $module
 	 * @return boolean
 	 */
-	protected function moduleUpdateAllowed(string $module) {
-		return boolval(config("waf.updates.modules.$module", default: false)) ;
+	protected function moduleAutomaticUpdateAllowed(string $module) {
+		return boolval(config("waf.$module.auto-update", default: false)) ;
 	}
 
 	/**
@@ -115,7 +115,7 @@ class WafUpdateCommand extends Command {
 	 * @return bool
 	 */
 	protected function shouldUpdateIpReputation() {
-		return $this->moduleUpdateAllowed('ip-reputation') && config('waf.reputation.enabled', default: false) ;
+		return $this->moduleAutomaticUpdateAllowed('reputation') && config('waf.reputation.enabled', default: false) ;
 	}
 
 	/**
@@ -134,6 +134,7 @@ class WafUpdateCommand extends Command {
 	 * @return boolean
 	 */
 	protected function shouldUpdateGeolocation() {
+		// TODO
 		// If the configs say that we shouldn't update the geolocation.
 		if(! config('waf.updates.modules.geolocation', default: false)) {
 			return false ;

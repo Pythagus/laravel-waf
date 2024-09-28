@@ -26,13 +26,35 @@ return [
         // https://crontab.guru/#5_3,13,23_*_*_*
         //'cron' => "5 3,13,23 * * *", // At minute 5 past hour 3, 13, and 23
         'cron' => "* * * * *", // At minute 5 past hour 3, 13, and 23
+    ],
 
-        // Determine which modules will be updated.
-        'modules' => [
-            'waf-rules' => env('WAF_UPDATES_RULES', default: false),
-            'ip-reputation' => env('WAF_UPDATES_IPREPUTATION', default: true),
-            'geolocation' => env('WAF_UPDATES_GEOLOCATION', default: true),
-        ]
+    /*
+    |--------------------------------------------------------------------------
+    | HTTP rules protection.
+    |--------------------------------------------------------------------------
+    |
+    | This option controls the way the rules protections (regex) are blocking
+    | the suspicious traffic.
+    |
+    */
+    'rules' => [
+        // Determine whether the matching HTTP traffic should be blocked
+        // by the WAF.
+        'blocking' => env('WAF_RULES_BLOCKING', default: false),
+
+        // Determine whether the latching HTTP traffic should
+        // log into the database, so that the admin has an overview
+        // of the malicious traffic.
+        'logging' => env('WAF_RULES_LOGGING', default: true),
+
+        // Determine whether the rules should be automatically updated from
+        // the feeds below. 
+        'auto-update' => env('WAF_RULES_AUTO_UPDATE', default: false),
+
+        // Rules feeds. 
+        'feeds' => [
+            // TODO
+        ],
     ],
 
     /*
@@ -49,12 +71,15 @@ return [
     'reputation' => [
         // This will activate the automatic blacklist if the IP
         // is known by one of the defined feeds.
-        'enabled' => env('WAF_REPUTATION', default: true),
+        'enabled' => env('WAF_REPUTATION_ENABLED', default: true),
 
         // A backup file is stored in the filesystem so that we can
         // retrieve the list if the cache is cleared.
         // If set to null, this backup system will be disabled.
         'storage' => storage_path('framework/cache/ip-reputation.txt'),
+
+        // Determine whether the reputation database will be automatically updated.
+        'auto-update' => env('WAF_REPUTATION_AUTO_UPDATE', default: true),
 
         // List of reputation feeds.
         // Allowed values:
