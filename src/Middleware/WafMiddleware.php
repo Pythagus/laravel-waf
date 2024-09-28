@@ -1,14 +1,14 @@
 <?php
 
-namespace Pythagus\LaravelWaf\Http\Middleware;
+namespace Pythagus\LaravelWaf\Middleware;
 
-use Closure;
 use Illuminate\Http\Request;
 use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
+use Pythagus\LaravelWaf\Security\HttpRules;
 use Pythagus\LaravelWaf\Security\IpReputation;
+use Pythagus\LaravelWaf\Support\ManagesUrl;
 use Pythagus\LaravelWaf\Support\RegexMatcher;
-use Pythagus\LaravelWaf\Support\Rules;
 
 /**
  * Base WAF middleware that will detect and block
@@ -18,12 +18,14 @@ use Pythagus\LaravelWaf\Support\Rules;
  */
 class WafMiddleware {
 
+    use ManagesUrl ;
+
     /**
      * This is an helper class managing the rules.
      *
-     * @var Rules
+     * @var HttpRules
      */
-    protected Rules $rules ;
+    protected HttpRules $rules ;
 
     /**
      * Class helping to protect the header by testing regex
@@ -45,11 +47,11 @@ class WafMiddleware {
      * Build a new middleware instance, and create the
      * helpers instances.
      * 
-     * @param Rules $rules
+     * @param HttpRules $rules
      * @param RegexMatcher $matcher
      * @param IpReputation $reputation
      */
-    public function __construct(Rules $rules, RegexMatcher $matcher, IpReputation $reputation) {
+    public function __construct(HttpRules $rules, RegexMatcher $matcher, IpReputation $reputation) {
         $this->rules = $rules ;
         $this->matcher = $matcher ;
         $this->reputation = $reputation ;
@@ -63,7 +65,7 @@ class WafMiddleware {
     public function handle(Request $request, \Closure $next) {
         try {
             $this->applyBlacklists($request) ;
-            $this->protectHeaderParameters($request) ;
+            //$this->protectHeaderParameters($request) ;
             $this->protectAccessedUri($request->getRequestUri()) ;
 
             return $next($request) ;
@@ -139,21 +141,23 @@ class WafMiddleware {
      */
     protected function protectAccessedUri(string $uri) {
         // Clean the URL.
-        $cleaned = strtolower(urldecode($uri)) ;
+        $cleaned = trim(strtolower(urldecode($uri))) ;
 
         // If the URL is worthless matching the regexees, then do nothing.
-        if($this->rules->isWorthlessUrl($cleaned)) {
+        if($this->isWorthlessUrl($cleaned) || $this->isDefinedRoute($cleaned)) {
             return ;
         }
 
         // If the URL is quite large, it might be a possible attack trying to check
         // the limitation of the HTTP server handling huge requests.
-        $this->rules->checkLongUrl($cleaned) ;
+        if($this->isLongUrl($cleaned)) {
+            throw WafProtectionException::long_url() ;
+        }
 
         // Test well-known malicious epxloits like XSS, LFI, RCE, etc.
-        $this->matcher->shouldntMatch(
+        /*$this->matcher->shouldntMatch(
             value: $cleaned, 
             regex: $this->rules->getUrlRules(),
-        ) ;
+        ) ;*/
     }
 }

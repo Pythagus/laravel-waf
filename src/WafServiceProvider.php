@@ -4,7 +4,7 @@ namespace Pythagus\LaravelWaf;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
-use Pythagus\LaravelWaf\Http\Middleware\WafMiddleware;
+use Pythagus\LaravelWaf\Middleware\WafMiddleware;
 
 /**
  * Laravel base service provider.
