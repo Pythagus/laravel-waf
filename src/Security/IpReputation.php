@@ -31,7 +31,7 @@ class IpReputation {
     protected function retrieveFromStorage() {
         // If the cache is empty, it was probably cleared. Let's
         // fill the cache again.
-        $path = config('waf.reputation.storage') ;
+        $path = config('waf.ip-reputation.storage', null) ;
 
         // If the path is null, then the backup plan was disabled
         // by the user. Then, return an empty array.
@@ -88,7 +88,7 @@ class IpReputation {
         $addresses = [] ;
 
         // Iterate on the declared feeders.
-        foreach(config('waf.reputation.feeds') as $feed) {
+        foreach(config('waf.ip-reputation.feeds', []) as $feed) {
             try {
                 $feeder = Feed::factory($feed)->update() ;
 
