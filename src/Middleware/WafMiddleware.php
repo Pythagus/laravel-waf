@@ -68,21 +68,27 @@ class WafMiddleware {
             //$this->protectHeaderParameters($request) ;
             $this->protectAccessedUri($request->getRequestUri()) ;
 
-            return $next($request) ;
         } catch(WafProtectionException $e) {
             # Officially, the HTTP code 400 is meant for requests
-            # that don't respect what the server was expecting, or
-            # that it was considerd unsafe. So, that's perfect!
+            # that don't respect what the server was expecting or
+            # was considered unsafe. So, that's perfect!
             // TODO: add metrics for the admin
             abort(400) ;
+            
         } catch(WafConfigurationException $e) {
-            // Report the exception, so that the admin can manage the issues.
+            # Report the exception, so that the admin can manage the issues.
             report($e) ;
 
-            // But keep serving the request, because a configuration issue in
-            // the WAF shouldn't impact the traffic, legitimate or not.
-            return $next($request) ;
+            // If the application is not in production, then
+            // raise an error. Otherwise, we should keep serving
+            // the request, because a configuration issue in the 
+            // WAF shouldn't impact the traffic, legitimate or not.
+            if(app()->isLocal()) {
+                throw $e ;
+            }
         }
+
+        return $next($request) ;
     }
 
     /**
