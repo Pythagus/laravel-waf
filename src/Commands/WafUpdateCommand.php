@@ -100,7 +100,7 @@ class WafUpdateCommand extends Command {
 		$this->perform('ip-reputation', fn() => $this->updateIpReputation()) ;
 
 		// We update the HTTP rules every time this command is called.
-		$this->perform('rules', fn() => $this->updateHttpRules()) ;
+		$this->perform('http-rules', fn() => $this->updateHttpRules()) ;
 
 		// For the geolocation, we don't need to update the database
 		// that frequently. So, just update it once a day.

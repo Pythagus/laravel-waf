@@ -34,7 +34,7 @@ class HttpRules {
     protected function retrieveFromStorage() {
         // If the cache is empty, it was probably cleared. Let's
         // fill the cache again.
-        $path = config('waf.rules.storage') ;
+        $path = config('waf.http-rules.storage') ;
 
         // If the path is null, then the backup plan was disabled
         // by the user. Then, return an empty array.
@@ -68,7 +68,7 @@ class HttpRules {
         $http_rules = [] ;
 
         // Iterate on the declared feeders.
-        foreach(config('waf.rules.feeds', []) as $feed) {
+        foreach(config('waf.http-rules.feeds', []) as $feed) {
             try {
                 $temporary_name = tempnam(sys_get_temp_dir(), 'waf-rules') ;
                 $response = Http::sink($temporary_name)->get($feed) ;
@@ -101,7 +101,7 @@ class HttpRules {
         }
 
         // Save the rules in the storage facility if feature is enabled.
-        if($path = config('waf.rules.storage')) {
+        if($path = config('waf.http-rules.storage', null)) {
             // Format the output.
             $output = array_map(fn($rule) => $rule['rule_type'] . "," . $rule['rule_id'] . "," . $rule['rule'], $http_rules) ;
 

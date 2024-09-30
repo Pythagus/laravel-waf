@@ -37,7 +37,7 @@ return [
     | the suspicious traffic.
     |
     */
-    'rules' => [
+    'http-rules' => [
         // A backup file is stored in the filesystem so that we can
         // retrieve the list if the cache is cleared.
         // If set to null, this backup system will be disabled.
