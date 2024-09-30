@@ -38,6 +38,11 @@ return [
     |
     */
     'rules' => [
+        // A backup file is stored in the filesystem so that we can
+        // retrieve the list if the cache is cleared.
+        // If set to null, this backup system will be disabled.
+        'storage' => storage_path('framework/cache/waf-rules.txt'),
+
         // Determine whether the matching HTTP traffic should be blocked
         // by the WAF.
         'blocking' => env('WAF_RULES_BLOCKING', default: false),
@@ -53,7 +58,7 @@ return [
 
         // Rules feeds. 
         'feeds' => [
-            // TODO
+            "https://raw.githubusercontent.com/Pythagus/http-injections-regex/refs/heads/main/outputs/rules.csv"
         ],
     ],
 
@@ -68,7 +73,7 @@ return [
     | known for malicious activities.
     |
     */
-    'reputation' => [
+    'ip-reputation' => [
         // This will activate the automatic blacklist if the IP
         // is known by one of the defined feeds.
         'enabled' => env('WAF_REPUTATION_ENABLED', default: true),
@@ -76,7 +81,7 @@ return [
         // A backup file is stored in the filesystem so that we can
         // retrieve the list if the cache is cleared.
         // If set to null, this backup system will be disabled.
-        'storage' => storage_path('framework/cache/ip-reputation.txt'),
+        'storage' => storage_path('framework/cache/waf-ip-reputation.txt'),
 
         // Determine whether the reputation database will be automatically updated.
         'auto-update' => env('WAF_REPUTATION_AUTO_UPDATE', default: true),

@@ -4,6 +4,7 @@ namespace Pythagus\LaravelWaf\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Pythagus\LaravelWaf\Security\HttpRules;
 use Pythagus\LaravelWaf\Security\IpReputation;
 
 /**
@@ -33,26 +34,58 @@ class WafUpdateCommand extends Command {
 	 *
 	 * @var string
 	 */
-	protected $description = 'Updates the WAF dependencies: AbuseIPDB, Geolocation, WAF rules, etc.' ;
+	protected $description = 'Updates the WAF dependencies: IP reputation, Geolocation, WAF rules, etc.' ;
+
+	/**
+	 * Global command status.
+	 * 
+	 * @var int
+	 */
+	protected $status ;
 
 	/**
 	 * Build the command instance and inject dependencies.
 	 *
 	 * @param IpReputation $reputation
 	 */
-	public function __construct(protected IpReputation $reputation) {
+	public function __construct(protected IpReputation $reputation, protected HttpRules $rules) {
 		parent::__construct() ;
+
+		// Command result status.
+		$this->status = null ;
 	}
 
 	/**
-	 * Report the exception, but continue the execution.
-	 *
-	 * @param \Throwable $t
+	 * Perform the update and check for an exception.
+	 * An exception shouldn't block the whole update process.
+	 * 
+	 * @param string $module
+	 * @param callable $callback
 	 * @return void
 	 */
-	protected function reportError(\Throwable $t) {
-		report($t) ;
-		$this->components->error("An error occured: " . $t->getMessage()) ;
+	protected function perform(string $module, callable $callback) {
+		try {
+			if($this->moduleAutomaticUpdateAllowed('ip-reputation')) {
+				if($this->moduleShouldBeUpdated($module)) {
+					$this->components->info("Updating '$module'...") ;
+					call_user_func($callback) ;
+					$this->components->success("'$module' updated!") ;
+				} else {
+					$this->components->info("'$module' NOT updated (didn't need an update)") ;
+				}
+			} else {
+				$this->components->warn("'$module' NOT updated (disabled by config)") ;
+			}
+		} catch(\Throwable $t) {
+			// Report the error, so that the admin can do something.
+			report($t) ;
+
+			// Display the error to the CLI.
+			$this->components->error("An error occured: " . $t->getMessage()) ;
+
+			// And return an error status code.
+			$this->status = Command::FAILURE ;
+		}
 	}
 
 	/**
@@ -61,40 +94,19 @@ class WafUpdateCommand extends Command {
 	 * @return int
 	 */
 	public function handle() {
-		$status = Command::SUCCESS ;
+		$this->status = Command::SUCCESS ;
 
-		try {
-			// We update the IP reputation every time this command is called.
-			if($this->shouldUpdateIpReputation()) {
-				$this->updateIpReputation() ;
-				$this->components->info("IP reputation database updated") ;
-			} else {
-				$this->components->warn("IP reputation database NOT updated (disabled by config)") ;
-			}
-		} catch(\Throwable $t) {
-			$this->reportError($t) ;
-			$status = Command::FAILURE ;
-		}
+		// We update the IP reputation every time this command is called.
+		//$this->perform('ip-reputation', fn() => $this->updateIpReputation()) ;
 
-		try {
-			// For the geolocation, we don't need to update the database
-			// that frequently. So, just update it once a day.
-			if($this->moduleUpdateAllowed('geolocation')) {
-				if($this->shouldUpdateGeolocation()) {
-					$this->updateGeolocationDatabase() ;
-					$this->components->info("Geolocation : database updated") ;
-				} else {
-					$this->components->warn("Geolocation : database not updated (didn't need an update)") ;
-				}
-			} else {
-				$this->components->warn("Geolocation : database NOT updated (disabled by config)") ;
-			}
-		} catch(\Throwable $t) {
-			$this->reportError($t) ;
-			$status = Command::FAILURE ;
-		}
+		// We update the HTTP rules every time this command is called.
+		$this->perform('rules', fn() => $this->updateHttpRules()) ;
+
+		// For the geolocation, we don't need to update the database
+		// that frequently. So, just update it once a day.
+		//$this->perform('geolocation', fn() => $this->updateGeolocationDatabase()) ;
 		
-		return $status ;
+		return $this->status ;
 	}
 
 	/**
@@ -105,26 +117,41 @@ class WafUpdateCommand extends Command {
 	 * @return boolean
 	 */
 	protected function moduleAutomaticUpdateAllowed(string $module) {
-		return boolval(config("waf.$module.auto-update", default: false)) ;
+		return config("waf.$module.auto-update", default: false) && config("waf.$module.enabled", default: false) ;
 	}
 
 	/**
-	 * Determine whether the IP reputation database
-	 * should be updated.
+	 * Determine whether a module should be updated.
 	 * 
+	 * @param string $module
 	 * @return bool
 	 */
-	protected function shouldUpdateIpReputation() {
-		return $this->moduleAutomaticUpdateAllowed('reputation') && config('waf.reputation.enabled', default: false) ;
+	protected function moduleShouldBeUpdated(string $module) {
+		// Manage specific module's updates.
+		if($module == 'geolocation') {
+			return $this->shouldUpdateGeolocation() ;
+		}
+
+		// By default, all modules are updated at every call of this command.
+		return true ;
 	}
 
 	/**
-	 * This method update the IP reputation cache.
+	 * This method updates the IP reputation cache.
 	 * 
 	 * @return void
 	 */
 	protected function updateIpReputation() {
 		$this->reputation->update() ;
+	}
+
+	/**
+	 * This method updates the HTTP rules cache.
+	 * 
+	 * @return void
+	 */
+	protected function updateHttpRules() {
+		$this->rules->update() ;
 	}
 
 	/**
