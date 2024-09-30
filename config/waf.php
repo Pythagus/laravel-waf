@@ -58,7 +58,7 @@ return [
 
         // Rules feeds. 
         'feeds' => [
-            "https://raw.githubusercontent.com/Pythagus/http-injections-regex/refs/heads/main/outputs/rules.csv"
+            "https://raw.githubusercontent.com/Pythagus/laravel-waf/refs/heads/main/rules/rules.csv"
         ],
     ],
 

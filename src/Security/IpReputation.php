@@ -5,6 +5,7 @@ namespace Pythagus\LaravelWaf\Security;
 use Illuminate\Support\Facades\Cache;
 use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 use Pythagus\LaravelWaf\Security\Reputations\Feed;
+use Pythagus\LaravelWaf\Support\ManagesFile;
 
 /**
  * This class helps checking whether an IP is known
@@ -13,6 +14,8 @@ use Pythagus\LaravelWaf\Security\Reputations\Feed;
  * @author Damien MOLINA
  */
 class IpReputation {
+
+    use ManagesFile ;
 
     /**
      * This is the cache key associated to the array
@@ -29,33 +32,13 @@ class IpReputation {
      * @return array
      */
     protected function retrieveFromStorage() {
-        // If the cache is empty, it was probably cleared. Let's
-        // fill the cache again.
-        $path = config('waf.ip-reputation.storage', null) ;
-
-        // If the path is null, then the backup plan was disabled
-        // by the user. Then, return an empty array.
-        if(! $path) {
-            return [] ;
-        }
-
-        // Prepare the new cache data.
         $cache = [] ;
 
-        // Open the file in read mode.
-        if($handle = fopen($path, 'r')) {
-            while(($line = fgets($handle)) !== false) {
-                if(! isset($cache[$line])) {
-                    $cache[$line] = true ;
-                }
-            }
+        $this->readFile(function($line) use (&$cache) {
+            $cache[$line] = true ;
+        }, config('waf.ip-reputation.storage')) ;
 
-            fclose($handle) ;
-
-            return $cache ;
-        }
-        
-        throw WafConfigurationException::storage($path) ;
+        return $cache ;
     }
 
     /**
@@ -103,7 +86,7 @@ class IpReputation {
         }
 
         // Save the IP addresses in the storage facility if feature is enabled.
-        if($path = config('waf.reputation.storage')) {
+        if($path = config('waf.ip-reputation.storage', null)) {
             file_put_contents($path, implode("\n", array_keys($addresses))) ;
         }
 

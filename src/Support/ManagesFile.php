@@ -2,6 +2,7 @@
 
 namespace Pythagus\LaravelWaf\Support;
 
+use ErrorException;
 use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 
 /**
@@ -11,18 +12,40 @@ use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
  */
 trait ManagesFile {
 
-    private function read(string $path, callable $manage_line, callable $getter) {
+    /**
+     * Read a file and apply the callback to each line.
+     * 
+     * @param callable $manage_line
+     * @param callable $getter
+     * @param string|null $path
+     * @return array
+     */
+    private function read(callable $manage_line, callable $getter, string $path = null) {
         // If the path is null, then the backup plan was disabled
         // by the user. Then, return an empty array.
-        if(is_null($path) || strlen($path) == 0) {
+        if(empty($path) || strlen($path) == 0) {
             return [] ;
         }
 
         // Prepare a list of results to return.
         $lines = [] ;
+        $handle = null ;
 
-        // Open the file in read mode.
-        if($handle = fopen($path, 'r')) {
+        try {
+            // Open the file in read mode.
+            $handle = fopen($path, 'r') ;
+        } catch(ErrorException $e) {
+            // If the file cannot be opened, then it's probably that
+            // it doesn't exist. Then, if the file exists, it's a permission
+            // issue that needs to raise the WafConfigurationException. Otherwise,
+            // it's just that the file doesn't exist!
+            if(! file_exists($path)) {
+                return [] ;
+            }
+        }
+
+        // If the file was successfully opened.
+        if($handle) {
             while(($line = call_user_func($getter, $handle)) !== false) {
                 $output = call_user_func($manage_line, $line) ;
 
@@ -39,8 +62,15 @@ trait ManagesFile {
         throw WafConfigurationException::storage($path) ;
     }
 
-    protected function readFile(string $path, callable $manage_line) {
-        return $this->read($path, $manage_line, fn($handler) => fgets($handler)) ;
+    /**
+     * Read a file and apply the callback to each line.
+     * 
+     * @param callable $callable
+     * @param string|null $path
+     * @return array
+     */
+    protected function readFile(callable $callable, string $path = null) {
+        return $this->read($callable, fn($handler) => fgets($handler), $path) ;
     }
 
     /**
@@ -50,10 +80,10 @@ trait ManagesFile {
      * @param string $path
      * @return array
      */
-    protected function readCsvFile(string $path) {
+    protected function readCsvFile(string $path = null) {
         $header = null ;
 
-        return $this->read($path, function($line) use (&$header) {
+        return $this->read(function($line) use (&$header) {
             // Skip if this is most likely a comment line.
             if(count($line) == 0 || str_starts_with($line[0], "#")) {
                 return ;
@@ -73,6 +103,6 @@ trait ManagesFile {
             }
 
             return $output ;
-        }, fn($handler) => fgetcsv($handler, 1000, ",")) ;
+        }, fn($handler) => fgetcsv($handler, 1000, ","), $path) ;
     }
 }

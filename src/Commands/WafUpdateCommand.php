@@ -97,7 +97,7 @@ class WafUpdateCommand extends Command {
 		$this->status = Command::SUCCESS ;
 
 		// We update the IP reputation every time this command is called.
-		//$this->perform('ip-reputation', fn() => $this->updateIpReputation()) ;
+		$this->perform('ip-reputation', fn() => $this->updateIpReputation()) ;
 
 		// We update the HTTP rules every time this command is called.
 		$this->perform('rules', fn() => $this->updateHttpRules()) ;
