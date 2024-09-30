@@ -7,7 +7,6 @@ use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
 use Pythagus\LaravelWaf\Security\HttpRules;
 use Pythagus\LaravelWaf\Security\IpReputation;
-use Pythagus\LaravelWaf\Support\RegexMatcher;
 
 /**
  * Base WAF middleware that will detect and block
@@ -25,14 +24,6 @@ class WafMiddleware {
     protected HttpRules $rules ;
 
     /**
-     * Class helping to protect the header by testing regex
-     * against strings or array of strings.
-     *
-     * @var RegexMatcher
-     */
-    protected RegexMatcher $matcher ;
-
-    /**
      * Helper managing the reputation cache and interactions
      * with it.
      *
@@ -45,12 +36,10 @@ class WafMiddleware {
      * helpers instances.
      * 
      * @param HttpRules $rules
-     * @param RegexMatcher $matcher
      * @param IpReputation $reputation
      */
-    public function __construct(HttpRules $rules, RegexMatcher $matcher, IpReputation $reputation) {
+    public function __construct(HttpRules $rules, IpReputation $reputation) {
         $this->rules = $rules ;
-        $this->matcher = $matcher ;
         $this->reputation = $reputation ;
     }
 
