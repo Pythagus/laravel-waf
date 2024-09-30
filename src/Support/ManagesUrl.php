@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\Route;
 trait ManagesUrl {
 
     /**
-     * Determine whether the URL is worthless analyzing.
+     * Determine whether the URL is "short" and without interest.
      *
      * @param string|null $cleaned
      * @return boolean
      */
-    public function isWorthlessUrl(string $cleaned = null) {
+    public function isShortUrl(string $cleaned = null) {
         return is_null($cleaned) || in_array($cleaned, ["", "/"]) || strlen($cleaned) <= 5 ;
     }
 

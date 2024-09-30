@@ -21,7 +21,7 @@ class WafProtectionException extends BaseWafException {
      * @return static
      */
     public static function http(string $property, string $value) {
-        return new static("Blacklisted HTTP property: $property => $value") ;
+        return new static("Invalid HTTP property: $property => $value") ;
     }
 
     /**

@@ -5,12 +5,11 @@ namespace Pythagus\LaravelWaf\Support;
 use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
 
 /**
- * This class helps managing regex and test
- * them against given strings or array of strings.
+ * This class helps calling regexes.
  * 
  * @author Damien MOLINA
  */
-class RegexMatcher {
+trait CallsRegex {
 
     /**
      * Local method used to match a list of regexes on
@@ -26,13 +25,37 @@ class RegexMatcher {
             return ;
         }
 
-        $expected_value = (int) ! $should_match ;
+        $expected_value = (int) $should_match ;
 
-        foreach($regex as $key => $r) {
-            if(preg_match($r, $value) == $expected_value) {
-                throw WafProtectionException::http($key, $value) ;
+        foreach($regex as $r) {
+            if($this->matches($r['rule'], $value) != $expected_value) {
+                throw WafProtectionException::http($r['rule_id'], $value) ;
             }
         }
+    }
+
+    /**
+     * Determine whether the given regex matches the given value.
+     * 
+     * @param string $regex
+     * @param string $value
+     * @return bool
+     */
+    public function matches(string $regex, string $value) {
+        if($value == null || $value == "") {
+            return false ;
+        }
+
+        // Decode the regex, as it is encoded in cache/storage.
+        $regex = hex2bin($regex) ;
+
+        // We need to escape the "%" as it is the delimiter of the
+        // PHP regex we chose.
+        $regex = str_replace("\%", "ESCAPE-PERCENT", $regex) ;
+        $regex = str_replace("%", "\\%", $regex) ;
+        $regex = str_replace("ESCAPE-PERCENT", "\%", $regex) ;
+        
+        return preg_match("%(" . $regex . ")%", $value) ;
     }
 
     /**

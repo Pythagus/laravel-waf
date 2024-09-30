@@ -7,7 +7,6 @@ use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
 use Pythagus\LaravelWaf\Security\HttpRules;
 use Pythagus\LaravelWaf\Security\IpReputation;
-use Pythagus\LaravelWaf\Support\ManagesUrl;
 use Pythagus\LaravelWaf\Support\RegexMatcher;
 
 /**
@@ -17,8 +16,6 @@ use Pythagus\LaravelWaf\Support\RegexMatcher;
  * @author: Damien MOLINA
  */
 class WafMiddleware {
-
-    use ManagesUrl ;
 
     /**
      * This is an helper class managing the rules.
@@ -65,7 +62,7 @@ class WafMiddleware {
     public function handle(Request $request, \Closure $next) {
         try {
             $this->applyBlacklists($request) ;
-            //$this->protectHeaderParameters($request) ;
+            $this->protectHeaderParameters($request) ;
             $this->protectAccessedUri($request->getRequestUri()) ;
 
         } catch(WafProtectionException $e) {
@@ -120,22 +117,36 @@ class WafMiddleware {
      */
     protected function protectHeaderParameters(Request $request) {
         // X-Forwarded-For value.
-        $this->matcher->shouldMatch(
-            regex: [Rules::X_FORWARDED_FOR => $this->rules->get(Rules::X_FORWARDED_FOR)],
-            value: $request->server->get('HTTP_X_FORWARDED_FOR')
-        ) ;
+        if($rule = $this->rules->getById(id: "X_FORWARDED_FOR", type: "HTTP")) {
+            $this->rules->shouldMatch(
+                regex: [$rule], 
+                value: $request->server->get('HTTP_X_FORWARDED_FOR')
+            ) ;
+        }
 
         // Accept-Language value.
-        $this->matcher->shouldMatch(
-            regex: [Rules::ACCEPT_LANGUAGE => $this->rules->get(Rules::ACCEPT_LANGUAGE)],
-            value: $request->server->get('HTTP_ACCEPT_LANGUAGE')
-        ) ;
+        if($rule = $this->rules->getById(id: "ACCEPT_LANGUAGE", type: "HTTP")) {
+            $this->rules->shouldMatch(
+                regex: [$rule], 
+                value: $request->server->get('HTTP_ACCEPT_LANGUAGE')
+            ) ;
+        }
+
+        // Content-Type value.
+        if($rule = $this->rules->getById(id: "CONTENT_TYPE", type: "HTTP")) {
+            $this->rules->shouldMatch(
+                regex: [$rule], 
+                value: $request->header('Content-Type')
+            ) ;
+        }
 
         // User-Agent value.
-        $this->matcher->shouldntMatch(
-            regex: [Rules::USER_AGENT => $this->rules->get(Rules::USER_AGENT)],
-            value: $request->server->get('HTTP_USER_AGENT'),
-        ) ;
+        if($rule = $this->rules->getById(id: "USER_AGENT", type: "HTTP")) {
+            $this->rules->shouldntMatch(
+                regex: [$rule], 
+                value: $request->server->get('HTTP_USER_AGENT')
+            ) ;
+        }
     }
 
     /**
@@ -150,20 +161,20 @@ class WafMiddleware {
         $cleaned = trim(strtolower(urldecode($uri))) ;
 
         // If the URL is worthless matching the regexees, then do nothing.
-        if($this->isWorthlessUrl($cleaned) || $this->isDefinedRoute($cleaned)) {
+        if($this->rules->isWorthlessUrl($cleaned)) {
             return ;
         }
 
         // If the URL is quite large, it might be a possible attack trying to check
         // the limitation of the HTTP server handling huge requests.
-        if($this->isLongUrl($cleaned)) {
+        if($this->rules->isLongUrl($cleaned)) {
             throw WafProtectionException::long_url() ;
         }
 
         // Test well-known malicious epxloits like XSS, LFI, RCE, etc.
-        /*$this->matcher->shouldntMatch(
-            value: $cleaned, 
-            regex: $this->rules->getUrlRules(),
-        ) ;*/
+        $this->rules->shouldntMatch($this->rules->getByType('LFI'), $cleaned) ;
+        $this->rules->shouldntMatch($this->rules->getByType('XSS'), $cleaned) ;
+        $this->rules->shouldntMatch($this->rules->getByType('SQLI'), $cleaned) ;
+        $this->rules->shouldntMatch($this->rules->getByType('RCE'), $cleaned) ;
     }
 }
