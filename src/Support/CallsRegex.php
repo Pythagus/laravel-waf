@@ -48,14 +48,8 @@ trait CallsRegex {
 
         // Decode the regex, as it is encoded in cache/storage.
         $regex = hex2bin($regex) ;
-
-        // We need to escape the "%" as it is the delimiter of the
-        // PHP regex we chose.
-        $regex = str_replace("\%", "ESCAPE-PERCENT", $regex) ;
-        $regex = str_replace("%", "\\%", $regex) ;
-        $regex = str_replace("ESCAPE-PERCENT", "\%", $regex) ;
         
-        return preg_match("%(" . $regex . ")%", $value) ;
+        return preg_match("&(" . $regex . ")&", $value) ;
     }
 
     /**
