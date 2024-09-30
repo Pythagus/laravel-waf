@@ -54,11 +54,11 @@ class WafServiceProvider extends ServiceProvider {
     protected function bootConfigurations() {
         $this->mergeConfigFrom($config = __DIR__.'/../config/waf.php', 'waf') ;
 
-        //if($this->app->runningInConsole()) {
+        if($this->app->runningInConsole()) {
             $this->publishes([
                 $config => config_path('waf.php')
             ], "waf-config") ;
-        //}
+        }
     }
 
     /**
