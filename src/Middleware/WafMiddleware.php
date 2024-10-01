@@ -5,6 +5,7 @@ namespace Pythagus\LaravelWaf\Middleware;
 use Illuminate\Http\Request;
 use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 use Pythagus\LaravelWaf\Exceptions\WafProtectionException;
+use Pythagus\LaravelWaf\Security\Geolocation;
 use Pythagus\LaravelWaf\Security\HttpRules;
 use Pythagus\LaravelWaf\Security\IpReputation;
 
@@ -32,15 +33,24 @@ class WafMiddleware {
     protected IpReputation $reputation ;
 
     /**
+     * Helper managing the geolocation of the IP address.
+     * 
+     * @var Geolocation
+     */
+    protected Geolocation $geolocation ;
+
+    /**
      * Build a new middleware instance, and create the
      * helpers instances.
      * 
      * @param HttpRules $rules
      * @param IpReputation $reputation
+     * @param Geolocation $geolocation
      */
-    public function __construct(HttpRules $rules, IpReputation $reputation) {
+    public function __construct(HttpRules $rules, IpReputation $reputation, Geolocation $geolocation) {
         $this->rules = $rules ;
         $this->reputation = $reputation ;
+        $this->geolocation = $geolocation ;
     }
 
     /**
@@ -54,6 +64,10 @@ class WafMiddleware {
             $this->protectHeaderParameters($request) ;
             $this->protectAccessedUri($request->getRequestUri()) ;
 
+            // Enrich the request.
+            foreach($this->enrichRequest($request) as $key => $value) {
+                $request->$key = $value ;
+            }
         } catch(WafProtectionException $e) {
             # Officially, the HTTP code 400 is meant for requests
             # that don't respect what the server was expecting or
@@ -84,18 +98,24 @@ class WafMiddleware {
      * @return void
      */
     protected function applyBlacklists(Request $request) {
+        // Client original IP address.
+        $ip = $request->getClientIp() ;
+
         // Apply Accept-Language blacklist.
         $language = $request->server->get('HTTP_ACCEPT_LANGUAGE') ;
         if(str_contains($language, "frs")) {
             throw WafProtectionException::http("Accept-language", $language) ;
         }
 
-        # Apply reputation blacklist.
-        if($this->reputation->isKnown($ip = $request->getClientIp())) {
+        // Apply reputation blacklist.
+        if($this->reputation->isKnown($ip)) {
             throw WafProtectionException::blacklisted($ip) ;
         }
 
-        # TODO geofencing with MaxMind : https://github.com/stevebauman/location
+        // If the IP is blocked by the geolocation.
+        if($geolocation = $this->geolocation->isBlocked($ip)) {
+            throw WafProtectionException::geolocation($ip, $geolocation) ;
+        }
     }
 
     /**
@@ -165,5 +185,23 @@ class WafMiddleware {
         $this->rules->shouldntMatch($this->rules->getByType('XSS'), $cleaned) ;
         $this->rules->shouldntMatch($this->rules->getByType('SQLI'), $cleaned) ;
         $this->rules->shouldntMatch($this->rules->getByType('RCE'), $cleaned) ;
+    }
+
+    /**
+     * Get all the fields that should be added to the request
+     * as an enrichment.
+     * 
+     * @param Request $request
+     * @return array
+     */
+    protected function enrichRequest(Request $request): array {
+        $parameters = [] ;
+
+        // Add the IP location if module is enabled.
+        if(config('waf.geolocation.enabled')) {
+            $parameters['geolocation'] = $this->geolocation->locate("193.57.150.7" ?? $request->getClientIp()) ;
+        }
+
+        return $parameters ;
     }
 }

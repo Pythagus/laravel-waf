@@ -65,7 +65,11 @@ class WafUpdateCommand extends Command {
 	 */
 	protected function perform(string $module, callable $callback) {
 		try {
-			if($this->moduleAutomaticUpdateAllowed('ip-reputation')) {
+			// Should the module be automatically updated regarding
+			// the configurations the user set?
+			if($this->moduleAutomaticUpdateAllowed($module)) {
+				// Determine whether the module needs an update (all modules
+				// are not updated each time this command is called).
 				if($this->moduleShouldBeUpdated($module)) {
 					$this->components->info("Updating '$module'...") ;
 					call_user_func($callback) ;
@@ -104,7 +108,7 @@ class WafUpdateCommand extends Command {
 
 		// For the geolocation, we don't need to update the database
 		// that frequently. So, just update it once a day.
-		//$this->perform('geolocation', fn() => $this->updateGeolocationDatabase()) ;
+		$this->perform('geolocation', fn() => $this->updateGeolocationDatabase()) ;
 		
 		return $this->status ;
 	}
@@ -117,7 +121,11 @@ class WafUpdateCommand extends Command {
 	 * @return boolean
 	 */
 	protected function moduleAutomaticUpdateAllowed(string $module) {
-		return config("waf.$module.auto-update", default: false) && config("waf.$module.enabled", default: false) ;
+		$enabled = array_key_exists('enabled', config("waf.$module", [])) 
+			? config("waf.$module.enabled", default: false) 
+			: true ;
+
+		return config("waf.$module.auto-update", default: false) && $enabled ;
 	}
 
 	/**
@@ -129,7 +137,22 @@ class WafUpdateCommand extends Command {
 	protected function moduleShouldBeUpdated(string $module) {
 		// Manage specific module's updates.
 		if($module == 'geolocation') {
-			return $this->shouldUpdateGeolocation() ;
+			$date = Cache::get(static::CACHE_GEOLOCATION_LAST_UPDATE_KEY) ;
+
+			// If this is the first time it was launched, or the
+			// cache was cleared.
+			if(is_null($date)) {
+				return true ;
+			}
+
+			// 86100 = 86400 - 300
+			// 86400 is the number of seconds in 24 hours
+			// 300 : regarding the number of tasks launched at the same
+			//       time, a call could be delayed of some seconds or
+			//       minutes from its original schedule date. That's why
+			//       there is a small "overlapping" possible period.
+			//       300 = 5 * 60, the number of seconds in 5 minutes.
+			return (time() - $date) >= 86100 ;
 		}
 
 		// By default, all modules are updated at every call of this command.
@@ -155,44 +178,14 @@ class WafUpdateCommand extends Command {
 	}
 
 	/**
-	 * Determine whether the geolocation database
-	 * should be updated regarding the cache data.
-	 *
-	 * @return boolean
-	 */
-	protected function shouldUpdateGeolocation() {
-		// TODO
-		// If the configs say that we shouldn't update the geolocation.
-		if(! config('waf.updates.modules.geolocation', default: false)) {
-			return false ;
-		}
-
-		$date = Cache::get(static::CACHE_GEOLOCATION_LAST_UPDATE_KEY) ;
-
-		// If this is the first time it was launched, or the
-		// cache was cleared.
-		if(is_null($date)) {
-			return true ;
-		}
-
-		// 86100 = 86400 - 300
-		// 86400 is the number of seconds in 24 hours
-		// 300 : regarding the number of tasks launched at the same
-		//       time, a call could be delayed of some seconds or
-		//       minutes from its original schedule date. That's why
-		//       there is a small "overlapping" possible period.
-		//       300 = 5 * 60, the number of seconds in 5 minutes.
-		return (time() - $date) >= 86100 ;
-	}
-
-	/**
 	 * Update the geolocation database.
 	 *
 	 * @return void
 	 */
 	protected function updateGeolocationDatabase() {
-		// TODO
-
+		// Execute the location:update command if it exists.
+		$this->callSilently('location:update') ;
+		
 		// Set the new update date in the cache.
 		Cache::forget(static::CACHE_GEOLOCATION_LAST_UPDATE_KEY) ;
 		Cache::forever(static::CACHE_GEOLOCATION_LAST_UPDATE_KEY, time()) ;

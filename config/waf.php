@@ -98,4 +98,45 @@ return [
             'https://raw.githubusercontent.com/borestad/blocklist-abuseipdb/refs/heads/main/abuseipdb-s100-7d.ipv4',
         ],
     ],
-];
+
+    /*
+    |--------------------------------------------------------------------------
+    | IP location.
+    |--------------------------------------------------------------------------
+    |
+    | This option controls how your application will determine
+    | the geolocation associated to an IP address.
+    | This package uses the InteractionDesignFoundation/laravel-geoip package
+    | for resolving geolocation. Please refer to the documentation to configure
+    | a geolocation provider.
+    |
+    | @see https://github.com/InteractionDesignFoundation/laravel-geoip
+    |
+    */
+    'geolocation' => [
+        // Determine whether the reputation database will be automatically updated.
+        'enabled' => env('WAF_GEOLOCATION_ENABLED', default: true),
+
+        // Determine whether the geolocation database will be automatically updated.
+        'auto-update' => env('WAF_GEOLOCATION_AUTO_UPDATE', default: true),
+
+        // This value allows to change the path of the database.
+        // @see WafServiceProvider (method bootConfigurations).
+        'override-maxmind-path' => env('WAF_GEOLOCATION_OVERRIDE_MAXMIND_PATH', default: true),
+
+        // This array specifies the patterns that can be blocked
+        // regarding the location of the IP addresses.
+        'rules' => [
+            // In this array, you can set the countries you want to block.
+            // Reference: https://www.iban.com/country-codes
+            //
+            // You can set:
+            // - country codes (ISO codes) (column "Alpha-2 code")
+            // - country names (column "Country")
+            'country' => [
+                // "China", <== Country name
+                // "NO", <== Country code
+            ],
+        ]
+    ],
+] ;

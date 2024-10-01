@@ -54,6 +54,17 @@ class WafServiceProvider extends ServiceProvider {
     protected function bootConfigurations() {
         $this->mergeConfigFrom($config = __DIR__.'/../config/waf.php', 'waf') ;
 
+        // This overrides the default stevebauman/location location path for
+        // MaxMind, because it storres the database in the /database/maxmind 
+        // folder which is not "compliant" with what we do in this package.
+        if(config('waf.geolocation.override-maxmind-path', default: true)) {
+            config([
+                'location.maxmind.local.path' => storage_path('framework/cache/maxmind.mmdb'),
+            ]) ;
+        }
+        
+        // If the application is running in the console, allow the user
+        // to publish the configs.
         if($this->app->runningInConsole()) {
             $this->publishes([
                 $config => config_path('waf.php')

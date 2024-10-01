@@ -36,6 +36,18 @@ class WafProtectionException extends BaseWafException {
     }
 
     /**
+     * Exception raised when the IP was found in the IP
+     * reputation database.
+     * 
+     * @param string $ip
+     * @param array $parameters
+     * @return static
+     */
+    public static function geolocation(string $ip, array $parameters) {
+        return new static("IP address blocked by geolocation") ;
+    }
+
+    /**
      * Exception raised when an abnormally
      * long URL was received.
      * 
