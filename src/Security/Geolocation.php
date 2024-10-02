@@ -63,6 +63,11 @@ class Geolocation {
         // Get the IP location.
         $location = $this->locate($ip) ;
 
+        // If the location was not found, then do nothing.
+        if(empty($location)) {
+            return null ;
+        }
+
         // If the country code is blocked.
         if($this->isCountryBlocked($location->countryCode)) {
             return ['country' => $location->countryCode] ;
