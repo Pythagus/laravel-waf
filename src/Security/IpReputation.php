@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Cache;
 use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 use Pythagus\LaravelWaf\Security\Reputations\Feed;
 use Pythagus\LaravelWaf\Support\ManagesFile;
+use Pythagus\LaravelWaf\Support\ManagesIp;
 
 /**
  * This class helps checking whether an IP is known
@@ -15,7 +16,7 @@ use Pythagus\LaravelWaf\Support\ManagesFile;
  */
 class IpReputation {
 
-    use ManagesFile ;
+    use ManagesFile, ManagesIp ;
 
     /**
      * This is the cache key associated to the array
@@ -50,7 +51,7 @@ class IpReputation {
     public function isKnown(string $ip) {
         // If the IP is private, we don't want to check whether it is
         // known for suspicious activities ; it's time consuming.
-        if(! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        if($this->isPrivateIp($ip)) {
             return false ;
         }
 

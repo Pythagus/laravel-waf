@@ -2,6 +2,7 @@
 
 namespace Pythagus\LaravelWaf\Security;
 
+use Pythagus\LaravelWaf\Support\ManagesIp;
 use Stevebauman\Location\Facades\Location as GeoIP;
 use Stevebauman\Location\Position as Location;
 
@@ -13,16 +14,7 @@ use Stevebauman\Location\Position as Location;
  */
 class Geolocation {
 
-    /**
-     * Determine whether the given IP is private.
-     * 
-     * @param string $ip
-     * @return bool
-     */
-    public static function isPrivateIp(string $ip) {
-        return ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)
-            && ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 | FILTER_FLAG_NO_PRIV_RANGE) ;
-    }
+    use ManagesIp ;
 
     /**
      * Get the location of the IP address. If it is
@@ -36,7 +28,7 @@ class Geolocation {
         // If this is a private IP, we don't want to call
         // the geolocation, as the location of a private IP
         // doesn't have any sense.
-        if(! Geolocation::isPrivateIp($ip)) {
+        if(! $this->isPrivateIp($ip)) {
             try {
                 $location = GeoIP::get($ip) ;
 
