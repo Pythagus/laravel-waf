@@ -50,8 +50,7 @@ class HttpRules extends BaseService {
         }
 
         // Request the feed.
-        $temporary_name = tempnam(sys_get_temp_dir(), 'waf-rules') ;
-        $response = Http::sink($temporary_name)->get($url) ;
+        $response = Http::get($url) ;
 
         // Ensure that the request was successful, or throw
         // an exception otherwise.

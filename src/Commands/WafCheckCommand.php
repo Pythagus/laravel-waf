@@ -140,6 +140,5 @@ class WafCheckCommand extends Command {
 		$this->checkConfigBoolean('http-rules.blocking') ;
 		$this->checkConfigBoolean('http-rules.logging') ;
 		$this->checkConfigBoolean('http-rules.auto-update') ;
-		$this->checkStorage("HTTP rules", $this->rules->config('storage')) ;
 	}
 }

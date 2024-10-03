@@ -33,10 +33,6 @@ return [
     |
     */
     'http-rules' => [
-        // A backup file is stored in the filesystem so that we can
-        // retrieve the list if the cache is cleared.
-        'storage' => storage_path('framework/cache/waf-rules.json'),
-
         // Determine whether the matching HTTP traffic should be blocked
         // by the WAF.
         'blocking' => env('WAF_RULES_BLOCKING', default: false),
