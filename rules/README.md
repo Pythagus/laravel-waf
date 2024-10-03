@@ -1,2 +1,0 @@
-# HTTP rules
-The rules are automatically pushed from [https://github.com/Pythagus/http-injections-regex](Pythagus/http-injections-regex) when a new version is released. The file `rules.csv` is not meant to be used in this repository directly. It is only here for you to know what the most recent rules are. Your application will automatically pull the updates from the Github repository, so that you don't need to update the library to get the most recent rules.
