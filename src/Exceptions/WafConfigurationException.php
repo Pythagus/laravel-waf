@@ -32,4 +32,24 @@ class WafConfigurationException extends BaseWafException {
     public static function reputationFeed(string $feed) {
         return new static("WAF: Undefined IP reputation feed '$feed'. Expecting an URL or a predefined feed.") ;
     }
+
+    /**
+     * Exception raised when an invalid value was set
+     * in the HTTP rules feed list.
+     * 
+     * @return static
+     */
+    public static function missingHttpRulesFeed() {
+        return new static("WAF: Missing HTTP rules feed URL.") ;
+    }
+
+    /**
+     * Exception raised when an the HTTP rules feed didn't return
+     * a valid JSON file.
+     * 
+     * @return static
+     */
+    public static function invalidHttpRulesFeed() {
+        return new static("WAF: Invalid HTTP rules feed URL (expected JSON format).") ;
+    }
 }

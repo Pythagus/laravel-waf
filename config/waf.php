@@ -36,7 +36,7 @@ return [
         // A backup file is stored in the filesystem so that we can
         // retrieve the list if the cache is cleared.
         // If set to null, this backup system will be disabled.
-        'storage' => storage_path('framework/cache/waf-rules.txt'),
+        'storage' => storage_path('framework/cache/waf-rules.json'),
 
         // Determine whether the matching HTTP traffic should be blocked
         // by the WAF.
@@ -51,10 +51,8 @@ return [
         // the feeds below. 
         'auto-update' => env('WAF_RULES_AUTO_UPDATE', default: false),
 
-        // Rules feeds. 
-        'feeds' => [
-            "https://raw.githubusercontent.com/Pythagus/laravel-waf/refs/heads/main/rules/rules.csv"
-        ],
+        // Rules feed. 
+        'feed' => "https://raw.githubusercontent.com/Pythagus/http-injections-regex/refs/heads/main/outputs/rules.json",
     ],
 
     /*

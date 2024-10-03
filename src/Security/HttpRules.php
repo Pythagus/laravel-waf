@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
 use Pythagus\LaravelWaf\Support\CallsRegex;
-use Pythagus\LaravelWaf\Support\ManagesFile;
 use Pythagus\LaravelWaf\Support\ManagesUrl;
 
 /**
@@ -17,7 +16,7 @@ use Pythagus\LaravelWaf\Support\ManagesUrl;
  */
 class HttpRules extends BaseService {
 
-    use ManagesFile, ManagesUrl, CallsRegex ;
+    use ManagesUrl, CallsRegex ;
 
     /**
      * The base config array key to retrieve
@@ -36,73 +35,45 @@ class HttpRules extends BaseService {
     public const CACHE_KEY = 'waf_http_rules' ;
 
     /**
-     * Retrieve the known IP addresses from the
-     * storage facility.
-     * 
-     * @return array
-     */
-    protected function retrieveFromStorage() {
-        return $this->readCsvFile($this->config('storage')) ;
-    }
-
-    /**
      * Retrieve the HTTP rules (regex) from the feeds.
      *
      * @return string[]
      */
     public function update() {
-        $http_rules = [] ;
+        $url = $this->config('feed', default: null) ;
 
-        // Iterate on the declared feeders.
-        foreach($this->config('feeds', []) as $feed) {
-            try {
-                $temporary_name = tempnam(sys_get_temp_dir(), 'waf-rules') ;
-                $response = Http::sink($temporary_name)->get($feed) ;
+        // If the URL is missing but the package needed to be
+        // updated by configuration, then raise an exception.
+        if(! $url) {
+            throw WafConfigurationException::missingHttpRulesFeed() ;
+        }
 
-                // If the feed is valid.
-                if($response->successful()) {
-                    $_rules = $this->readCsvFile($temporary_name) ;
+        // Request the feed.
+        $temporary_name = tempnam(sys_get_temp_dir(), 'waf-rules') ;
+        $response = Http::sink($temporary_name)->get($url) ;
 
-                    foreach($_rules as $key => $rule) {
-                        $new_rule = array_filter($rule, function($key) {
-                            return in_array($key, ['rule_type', 'rule_id', 'rule']) ;
-                        }, ARRAY_FILTER_USE_KEY) ;
+        // Ensure that the request was successful, or throw
+        // an exception otherwise.
+        $response->throw() ;
 
-                        // If all required fields were found in the array.
-                        if(count($new_rule) == 3) {
-                            $new_rule['rule'] = $new_rule['rule'] ;
+        // Try to get the data as a JSON.
+        $data = $response->json() ;
 
-                            // Set the new value.
-                            $_rules[$key] = $new_rule ;
-                        } else {
-                            // Otherwise, we cannot take the rule into account.
-                            unset($_rules[$key]) ;
-                        }
-                    }
-
-                    $http_rules = $http_rules + $_rules ;
-                }
-            } catch(WafConfigurationException) {
-                // We don't do anything for a configuration issue.
-                // The user (would) have been warned with the waf:check
-                // command.
-            }
+        // But if nothing was found, then it's probably that
+        // the response was not a valid JSON.
+        if(is_null($data)) {
+            throw WafConfigurationException::invalidHttpRulesFeed() ;
         }
 
         // Save the rules in the storage facility if feature is enabled.
         if($path = $this->config('storage', default: null)) {
-            // Format the output.
-            $output = array_map(fn($rule) => $rule['rule_type'] . "," . $rule['rule_id'] . "," . $rule['rule'], $http_rules) ;
-
-            // Add the header.
-            array_unshift($output, implode(",", ['rule_type', 'rule_id', 'rule'])) ;
-
-            file_put_contents($path, implode("\n", $output)) ;
+            // Move the file to its new location.
+            rename($temporary_name, $path) ;
         }
 
         // Finally, save the IP in the cache.
         Cache::forget(static::CACHE_KEY) ;
-        Cache::forever(static::CACHE_KEY, $http_rules) ;
+        Cache::forever(static::CACHE_KEY, $response->json('rules')) ;
     }
 
     /**
@@ -112,7 +83,13 @@ class HttpRules extends BaseService {
      */
     protected function getCachedData() {
         return Cache::rememberForever(static::CACHE_KEY, function() {
-            return $this->retrieveFromStorage() ;
+            if($path = $this->config('storage', default: null)) {
+                $json = json_decode(file_get_contents($path), true) ;
+
+                return data_get($json, 'rules', default: []) ;
+            }
+
+            return [] ;
         }) ;
     }
 
