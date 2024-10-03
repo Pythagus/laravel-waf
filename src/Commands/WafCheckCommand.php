@@ -69,6 +69,7 @@ class WafCheckCommand extends Command {
 	 */
 	public function handle() {
 		$this->checkIpReputationConfiguration() ;
+		$this->checkHttpRulesConfiguration() ;
 
 		// Display a success message if no test failed.
 		if($this->status == static::SUCCESS) {
@@ -78,6 +79,27 @@ class WafCheckCommand extends Command {
 		return $this->status ;
 	}
 
+	/**
+	 * Check whether the given configuration is a boolean.
+	 * 
+	 * @param string $key
+	 * @return boolean
+	 */
+	protected function checkConfigBoolean(string $key) {
+		if(filter_var($value = config("waf.$key"), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === null) {
+			$value = is_null($value) ? "null" : "'" . json_encode($value) . "'" ;
+			
+			$this->report("Configuration issue: 'waf.$key' must be a boolean, $value given") ;
+		}
+	}
+
+	/**
+	 * Check whether the storage value is set.
+	 * 
+	 * @param string $module
+	 * @param string|null $path
+	 * @return void
+	 */
 	protected function checkStorage(string $module, string $path = null) {
 		if(! $path) {
 			$this->components->warn("$module: storage path is null. Did you disable storage feature?") ;
@@ -90,7 +112,9 @@ class WafCheckCommand extends Command {
 	 * @return void
 	 */
 	protected function checkIpReputationConfiguration() {
-		// Check the storage variable.
+		// Check the config variables.
+		$this->checkConfigBoolean('ip-reputation.enabled') ;
+		$this->checkConfigBoolean('ip-reputation.auto-update') ;
 		$this->checkStorage("IP reputation", $this->reputation->config('storage')) ;
 
 		// Check the reputation feeds.
@@ -104,5 +128,18 @@ class WafCheckCommand extends Command {
                 $this->report("IP reputation: invalid feed '$feed'") ;
             }
         }
+	}
+
+	/**
+	 * Check the HTTP rules configurations.
+	 * 
+	 * @return void
+	 */
+	protected function checkHttpRulesConfiguration() {
+		// Check the config variables.
+		$this->checkConfigBoolean('http-rules.blocking') ;
+		$this->checkConfigBoolean('http-rules.logging') ;
+		$this->checkConfigBoolean('http-rules.auto-update') ;
+		$this->checkStorage("HTTP rules", $this->rules->config('storage')) ;
 	}
 }
