@@ -12,9 +12,17 @@ use Stevebauman\Location\Position as Location;
  * 
  * @author Damien MOLINA
  */
-class Geolocation {
+class Geolocation extends BaseService {
 
     use ManagesIp ;
+
+    /**
+     * The base config array key to retrieve
+     * the configurations of the service.
+     * 
+     * @var string
+     */
+    protected $config = 'geolocation' ;
 
     /**
      * Get the location of the IP address. If it is
@@ -79,6 +87,6 @@ class Geolocation {
      * @return bool
      */
     protected function isCountryBlocked(string $country) {
-        return in_array($country, config('waf.geolocation.rules.country', [])) ;
+        return in_array($country, $this->config('rules.country', default: [])) ;
     }
 }

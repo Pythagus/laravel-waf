@@ -14,9 +14,17 @@ use Pythagus\LaravelWaf\Support\ManagesIp;
  * 
  * @author Damien MOLINA
  */
-class IpReputation {
+class IpReputation extends BaseService {
 
     use ManagesFile, ManagesIp ;
+
+    /**
+     * The base config array key to retrieve
+     * the configurations of the service.
+     * 
+     * @var string
+     */
+    protected $config = 'ip-reputation' ;
 
     /**
      * This is the cache key associated to the array
@@ -37,7 +45,7 @@ class IpReputation {
 
         $this->readFile(function($line) use (&$cache) {
             $cache[$line] = true ;
-        }, config('waf.ip-reputation.storage')) ;
+        }, $this->config('storage')) ;
 
         return $cache ;
     }
@@ -72,7 +80,7 @@ class IpReputation {
         $addresses = [] ;
 
         // Iterate on the declared feeders.
-        foreach(config('waf.ip-reputation.feeds', []) as $feed) {
+        foreach($this->config('feeds', default: []) as $feed) {
             try {
                 $feeder = Feed::factory($feed)->update() ;
 
@@ -87,7 +95,7 @@ class IpReputation {
         }
 
         // Save the IP addresses in the storage facility if feature is enabled.
-        if($path = config('waf.ip-reputation.storage', null)) {
+        if($path = $this->config('storage', default: null)) {
             file_put_contents($path, implode("\n", array_keys($addresses))) ;
         }
 

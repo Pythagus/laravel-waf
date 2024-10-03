@@ -15,11 +15,17 @@ use Pythagus\LaravelWaf\Support\ManagesUrl;
  * 
  * @author Damien MOLINA
  */
-class HttpRules {
+class HttpRules extends BaseService {
 
-    use ManagesFile ;
-    use ManagesUrl ;
-    use CallsRegex ;
+    use ManagesFile, ManagesUrl, CallsRegex ;
+
+    /**
+     * The base config array key to retrieve
+     * the configurations of the service.
+     * 
+     * @var string
+     */
+    protected $config = 'http-rules' ;
 
     /**
      * This is the cache key associated to the array
@@ -36,7 +42,7 @@ class HttpRules {
      * @return array
      */
     protected function retrieveFromStorage() {
-        return $this->readCsvFile(config('waf.http-rules.storage')) ;
+        return $this->readCsvFile($this->config('storage')) ;
     }
 
     /**
@@ -48,7 +54,7 @@ class HttpRules {
         $http_rules = [] ;
 
         // Iterate on the declared feeders.
-        foreach(config('waf.http-rules.feeds', []) as $feed) {
+        foreach($this->config('feeds', []) as $feed) {
             try {
                 $temporary_name = tempnam(sys_get_temp_dir(), 'waf-rules') ;
                 $response = Http::sink($temporary_name)->get($feed) ;
@@ -84,7 +90,7 @@ class HttpRules {
         }
 
         // Save the rules in the storage facility if feature is enabled.
-        if($path = config('waf.http-rules.storage', null)) {
+        if($path = $this->config('storage', default: null)) {
             // Format the output.
             $output = array_map(fn($rule) => $rule['rule_type'] . "," . $rule['rule_id'] . "," . $rule['rule'], $http_rules) ;
 
