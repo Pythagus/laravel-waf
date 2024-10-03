@@ -29,7 +29,7 @@ trait CallsRegex {
 
         foreach($regex as $r) {
             if($this->matches($r['rule'], $value) != $expected_value) {
-                throw WafProtectionException::http($r['rule_id'], $value) ;
+                throw WafProtectionException::http($r['id'], $value) ;
             }
         }
     }

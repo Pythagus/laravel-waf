@@ -5,6 +5,7 @@ namespace Pythagus\LaravelWaf\Security;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Pythagus\LaravelWaf\Exceptions\WafConfigurationException;
+use Pythagus\LaravelWaf\Models\WafRule;
 use Pythagus\LaravelWaf\Support\CallsRegex;
 use Pythagus\LaravelWaf\Support\ManagesUrl;
 
@@ -61,16 +62,79 @@ class HttpRules extends BaseService {
 
         // But if nothing was found, then it's probably that
         // the response was not a valid JSON.
-        if(is_null($data)) {
+        if(is_null($data) || ! array_key_exists('rules', $data ?? [])) {
             throw WafConfigurationException::invalidHttpRulesFeed() ;
         }
 
-        // Save the rules in the storage facility.
-        rename($temporary_name, $this->config('storage')) ;
+        // Save the rules in the database.
+        $this->updateDatabaseFromArray(data_get($data, 'rules')) ;
 
-        // Finally, save the rules in the cache.
+        // Finally, clear the cache to renew it.
+        $this->clearCache() ;
+        $this->getCachedData() ;
+    }
+
+    /**
+     * Update the rules stored in database.
+     * 
+     * @param array $rules
+     * @return void
+     */
+    protected function updateDatabaseFromArray(array $rules) {
+        $db_rules = [] ;
+        
+        // Get the rules in an associative array.
+        WafRule::all()->each(function(WafRule $rule) use (&$db_rules) {
+            $db_rules[$rule->id] = $rule ;
+        }) ;
+
+        foreach($rules as $rule) {
+            /** @var WafRule|null $db_rule */
+            $db_rule = data_get($db_rules, $id = data_get($rule, 'rule_id'), default: null) ;
+
+            // If the rule already existed, then we have to update
+            // the database record.
+            if($db_rule) {
+                // We only update the rule if it is configured to be
+                // automatically updated.
+                if($db_rule->isAutoUpdated()) {
+                    $db_rule->type = data_get($rule, 'rule_type') ?? $db_rule->type ;
+                    $db_rule->rule = data_get($rule, 'rule') ?? $db_rule->rule ;
+                    $db_rule->save() ;
+                }
+
+                // Remove the rule from the already-treated ones.
+                unset($db_rules[$id]) ;
+            } else {
+                // Otherwise, the rule didn't exist before, so we have
+                // to create it.
+                $new_rule = new WafRule([
+                    'id' => $id,
+                    'type' => data_get($rule, 'rule_type'),
+                    'rule' => data_get($rule, 'rule'),
+                    'status' => 'ACTIVE',
+                    'auto_update' => true,
+                ]) ;
+                $new_rule->save() ;
+            }
+        }
+
+        // If there are remaining rules, it means that they
+        // were removed from the feed. So, let's remove them
+        // from the database also!
+        foreach($db_rules as $rule) {
+            $rule->delete() ;
+        }
+    }
+
+    /**
+     * Invalid the cache, so that it is renewed next time
+     * it will be accessed.
+     * 
+     * @return void
+     */
+    public function clearCache() {
         Cache::forget(static::CACHE_KEY) ;
-        Cache::forever(static::CACHE_KEY, $response->json('rules')) ;
     }
 
     /**
@@ -80,10 +144,9 @@ class HttpRules extends BaseService {
      */
     protected function getCachedData() {
         return Cache::rememberForever(static::CACHE_KEY, function() {
-            $path = $this->config('storage') ;
-            $json = json_decode(file_get_contents($path), true) ;
-
-            return data_get($json, 'rules', default: []) ;
+            return WafRule::query()->where('status', 'ACTIVE')->get()->map(function(WafRule $rule) {
+                return $rule->only('id', 'type', 'rule') ;
+            })->toArray() ;
         }) ;
     }
 
@@ -95,7 +158,7 @@ class HttpRules extends BaseService {
      */
     public function getByType(string $type) {
         return array_values(array_filter($this->getCachedData(), function($el) use ($type) {
-            return $el['rule_type'] == $type ;
+            return $el['type'] == $type ;
         })) ;
     }
 
@@ -108,9 +171,9 @@ class HttpRules extends BaseService {
     public function getById(string $id, string $type = null) {
         $values = array_filter($this->getCachedData(), function($el) use ($id, $type) {
             // Add an optional check on the type
-            $same_type = is_null($type) ? true : $el['rule_type'] == $type ;
+            $same_type = is_null($type) ? true : $el['type'] == $type ;
 
-            return $el['rule_id'] == $id && $same_type ;
+            return $el['id'] == $id && $same_type ;
         }) ;
 
         return count($values) > 0 ? array_values($values)[0] : null ;
