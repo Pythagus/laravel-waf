@@ -66,7 +66,7 @@ class HttpRules extends BaseService {
         }
 
         // Save the rules in the storage facility.
-        rename($temporary_name, $this->config('storage', default: null)) ;
+        rename($temporary_name, $this->config('storage')) ;
 
         // Finally, save the rules in the cache.
         Cache::forget(static::CACHE_KEY) ;
@@ -80,7 +80,7 @@ class HttpRules extends BaseService {
      */
     protected function getCachedData() {
         return Cache::rememberForever(static::CACHE_KEY, function() {
-            $path = $this->config('storage', default: null) ;
+            $path = $this->config('storage') ;
             $json = json_decode(file_get_contents($path), true) ;
 
             return data_get($json, 'rules', default: []) ;
