@@ -105,5 +105,29 @@ class WafServiceProvider extends ServiceProvider {
                 $schedule->command('waf:update')->cron(config('waf.updates.cron')) ;
             }) ;
         }
+
+        // Add some context about the package if the AboutCommand exists.
+        if(class_exists("\Illuminate\Foundation\Console\AboutCommand")) {
+            \Illuminate\Foundation\Console\AboutCommand::add('WAF', $this->getDetailsOnApp()) ;
+        }
+    }
+
+    /**
+     * Get details on the application for the about command.
+     * 
+     * @return array
+     */
+    protected function getDetailsOnApp(): array {
+        $details = [] ;
+        
+        // Some status functions.
+        $enabledStatus = fn($enabled) => $enabled ? '<fg=green;options=bold>ENABLED</>' : 'DISABLED' ;
+        
+        // Add configuration details.
+        $details['HTTP rules'] = $enabledStatus(config('waf.http-rules.blocking')) ;
+        $details['IP reputation'] = $enabledStatus(config('waf.ip-reputation.enabled')) ;
+        $details['Geolocation'] = $enabledStatus(config('waf.geolocation.enabled')) ;
+
+        return $details ;
     }
 }
