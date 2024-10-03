@@ -18,14 +18,9 @@ return [
         // false, the 'modules' array option won't be checked.
         'automatic' => env('WAF_UPDATES', default: true),
 
-        // This allows you to override the default command to comment
-        // or add new features.
-        'command' => \Pythagus\LaravelWaf\Commands\WafUpdateCommand::class,
-
         // Cron expression scheduling the command.
         // https://crontab.guru/#5_3,13,23_*_*_*
-        //'cron' => "5 3,13,23 * * *", // At minute 5 past hour 3, 13, and 23
-        'cron' => "* * * * *", // At minute 5 past hour 3, 13, and 23
+        'cron' => "5 3,13,23 * * *", // At minute 5 past hour 3, 13, and 23
     ],
 
     /*

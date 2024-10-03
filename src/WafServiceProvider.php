@@ -78,21 +78,20 @@ class WafServiceProvider extends ServiceProvider {
      * @return void
      */
     protected function bootCommands() {
-        $command = config('waf.updates.command') ;
+        // Let the waf commands be available on console.
+        $this->commands([
+            \Pythagus\LaravelWaf\Commands\WafUpdateCommand::class,
+            \Pythagus\LaravelWaf\Commands\WafCheckCommand::class,
+        ]) ;
 
-        // Let the waf:update command be available on console.
-        $this->commands($command) ;
-
-        // If the automatic updates are disabled, then do not
-        // schedule the update command.
-        if(! config('waf.updates.automatic', default: false)) {
-            return ;
+        // If the automatic updates are enabled, then schedule
+        // the update command regarding the crontab value.
+        if(config('waf.updates.automatic', default: false)) {
+            $this->app->booted(function() {
+                /** @var Schedule $schedule */
+                $schedule = $this->app->make(Schedule::class) ;
+                $schedule->command('waf:update')->cron(config('waf.updates.cron')) ;
+            }) ;
         }
-
-        $this->app->booted(function() use ($command) {
-            /** @var Schedule $schedule */
-            $schedule = $this->app->make(Schedule::class) ;
-            $schedule->command($command)->cron(config('waf.updates.cron')) ;
-        }) ;
     }
 }
