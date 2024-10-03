@@ -31,7 +31,19 @@ class WafServiceProvider extends ServiceProvider {
 
         if($this->app->runningInConsole()) {
             $this->bootCommands() ;
+            $this->bootMigrations() ;
         }
+    }
+
+    /**
+     * Set the migration files to publish.
+     * 
+     * @return void
+     */
+    protected function bootMigrations() {
+        $this->publishesMigrations([
+            __DIR__.'/../migrations' => database_path('migrations'),
+        ], "waf-migrations") ;
     }
 
     /**
