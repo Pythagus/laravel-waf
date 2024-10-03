@@ -40,14 +40,16 @@ class IpReputation extends BaseService {
      * 
      * @return array
      */
-    protected function retrieveFromStorage() {
-        $cache = [] ;
+    protected function getCachedData() {
+        return Cache::rememberForever(static::CACHE_KEY, function() {
+            $cache = [] ;
 
-        $this->readFile(function($line) use (&$cache) {
-            $cache[$line] = true ;
-        }, $this->config('storage')) ;
+            $this->readFile(function($line) use (&$cache) {
+                $cache[$line] = true ;
+            }, $this->config('storage')) ;
 
-        return $cache ;
+            return $cache ;
+        }) ;
     }
 
     /**
@@ -64,9 +66,7 @@ class IpReputation extends BaseService {
         }
 
         // Get the value from the cache.
-        $cache = Cache::rememberForever(static::CACHE_KEY, function() {
-            return $this->retrieveFromStorage() ;
-        }) ;
+        $cache = $this->getCachedData() ;
 
         return isset($cache[ip2long($ip)]) ;
     }
@@ -94,10 +94,10 @@ class IpReputation extends BaseService {
             }
         }
 
-        // Save the IP addresses in the storage facility if feature is enabled.
-        if($path = $this->config('storage', default: null)) {
-            file_put_contents($path, implode("\n", array_keys($addresses))) ;
-        }
+        // Save the IP addresses in the storage facility.
+        file_put_contents(
+            $this->config('storage', default: null), implode("\n", array_keys($addresses))
+        ) ;
 
         // Finally, save the IP in the cache.
         Cache::forget(static::CACHE_KEY) ;

@@ -20,8 +20,6 @@ trait ManagesFile {
      * @return array
      */
     protected function readFile(callable $callable, string $path = null) {
-        return $this->read($callable, fn($handler) => fgets($handler), $path) ;
-
         // If the path is null, then the backup plan was disabled
         // by the user. Then, return an empty array.
         if(empty($path) || strlen($path) == 0) {
@@ -48,7 +46,7 @@ trait ManagesFile {
         // If the file was successfully opened.
         if($handle) {
             while(($line = fgets($handle)) !== false) {
-                $output = call_user_func($manage_line, $line) ;
+                $output = call_user_func($callable, $line) ;
 
                 if(! empty($output)) {
                     $lines[] = $output ;

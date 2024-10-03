@@ -65,13 +65,10 @@ class HttpRules extends BaseService {
             throw WafConfigurationException::invalidHttpRulesFeed() ;
         }
 
-        // Save the rules in the storage facility if feature is enabled.
-        if($path = $this->config('storage', default: null)) {
-            // Move the file to its new location.
-            rename($temporary_name, $path) ;
-        }
+        // Save the rules in the storage facility.
+        rename($temporary_name, $this->config('storage', default: null)) ;
 
-        // Finally, save the IP in the cache.
+        // Finally, save the rules in the cache.
         Cache::forget(static::CACHE_KEY) ;
         Cache::forever(static::CACHE_KEY, $response->json('rules')) ;
     }
@@ -83,13 +80,10 @@ class HttpRules extends BaseService {
      */
     protected function getCachedData() {
         return Cache::rememberForever(static::CACHE_KEY, function() {
-            if($path = $this->config('storage', default: null)) {
-                $json = json_decode(file_get_contents($path), true) ;
+            $path = $this->config('storage', default: null) ;
+            $json = json_decode(file_get_contents($path), true) ;
 
-                return data_get($json, 'rules', default: []) ;
-            }
-
-            return [] ;
+            return data_get($json, 'rules', default: []) ;
         }) ;
     }
 

@@ -35,7 +35,6 @@ return [
     'http-rules' => [
         // A backup file is stored in the filesystem so that we can
         // retrieve the list if the cache is cleared.
-        // If set to null, this backup system will be disabled.
         'storage' => storage_path('framework/cache/waf-rules.json'),
 
         // Determine whether the matching HTTP traffic should be blocked
@@ -73,7 +72,6 @@ return [
 
         // A backup file is stored in the filesystem so that we can
         // retrieve the list if the cache is cleared.
-        // If set to null, this backup system will be disabled.
         'storage' => storage_path('framework/cache/waf-ip-reputation.txt'),
 
         // Determine whether the reputation database will be automatically updated.

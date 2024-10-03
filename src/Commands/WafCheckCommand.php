@@ -101,8 +101,8 @@ class WafCheckCommand extends Command {
 	 * @return void
 	 */
 	protected function checkStorage(string $module, string $path = null) {
-		if(! $path) {
-			$this->components->warn("$module: storage path is null. Did you disable storage feature?") ;
+		if(! $path || empty($path) || strlen(trim($path ?? "")) <= 0) {
+			$this->report("$module: storage path is null") ;
 		}
 	}
 
